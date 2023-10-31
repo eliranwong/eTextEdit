@@ -19,3 +19,10 @@ https://github.com/eliranwong/eTextEdit
 
 # Screenshot
 
+![menu](https://github.com/eliranwong/eTextEdit/assets/25262722/e900580d-cca6-46a8-8b61-7a51af13e245)
+
+![search_replace](https://github.com/eliranwong/eTextEdit/assets/25262722/511027b6-acd0-4704-982b-44c946436613)
+
+# Key Bindings
+
+

@@ -78,7 +78,7 @@ class ApplicationState:
     clipboard = PyperclipClipboard()
 
 def get_statusbar_text():
-    return " [esc-m] menu "
+    return " [esc-m] menu [ctrl+h] help "
 
 def get_statusbar_right_text():
     return " {}:{}  ".format(

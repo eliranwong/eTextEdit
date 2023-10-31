@@ -23,8 +23,25 @@ https://github.com/eliranwong/eTextEdit
 
 ![menu](https://github.com/eliranwong/eTextEdit/assets/25262722/7703f138-e56e-4c6f-84fc-4abe768f161a)
 
-# Key Bindings
+# Usage
 
+To open eTextEdit:
+
+> python3 eTextEdit.py
+
+To open a text file, e.g. test.txt:
+
+> python3 eTextEdit.py test.txt
+
+To pipe in a text string, e.g. "Hello World!":
+
+> echo "Hello World!" | python3 eTextEdit.py
+
+To append a file, e.g. test.txt, with a text string, e.g. "Hello World!":
+
+> echo "Hello World!" | python3 eTextEdit.py test.txt
+
+# Key Bindings
 
 escape + m: toggle menu
 

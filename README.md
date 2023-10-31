@@ -45,7 +45,7 @@ To append a file, e.g. test.txt, with a text string, e.g. "Hello World!":
 
 escape + m: toggle menu
 
-control + h: help
+control + k: help
 
 control + q: quit
 

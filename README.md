@@ -17,12 +17,47 @@ Modified and Enhanced by Eliran Wong:
 eTextEdit repository:
 https://github.com/eliranwong/eTextEdit
 
-# Screenshot
+# Screenshots
 
-![menu](https://github.com/eliranwong/eTextEdit/assets/25262722/e900580d-cca6-46a8-8b61-7a51af13e245)
+![search_replace](https://github.com/eliranwong/eTextEdit/assets/25262722/c7a564ce-2e3c-4913-8210-52e259545044)
 
-![search_replace](https://github.com/eliranwong/eTextEdit/assets/25262722/511027b6-acd0-4704-982b-44c946436613)
+![menu](https://github.com/eliranwong/eTextEdit/assets/25262722/7703f138-e56e-4c6f-84fc-4abe768f161a)
 
 # Key Bindings
 
 
+escape + m: toggle menu
+
+control + h: help
+
+control + q: quit
+
+control + a: select all
+
+escape + a: deselect all
+
+control + c: copy
+
+control + v: paste
+
+control + x: cut
+
+control + z: undo
+
+control + i: insert spaces
+
+control + f: find
+
+control + r: find & replace
+
+control + l: go to line
+
+control + d: delete
+
+control + n: new file
+
+control + o: open file
+
+control + s: save file
+
+control + w: save as file

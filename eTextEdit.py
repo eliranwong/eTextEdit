@@ -20,7 +20,7 @@ Modified and Enhanced by Eliran Wong:
 eTextEdit repository:
 https://github.com/eliranwong/eTextEdit
 """
-import datetime, sys, os, re, webbrowser
+import datetime, sys, os, re, webbrowser, shutil, wcwidth
 from asyncio import Future, ensure_future
 from prompt_toolkit.clipboard.pyperclip import PyperclipClipboard
 from prompt_toolkit.input import create_input
@@ -28,6 +28,8 @@ from prompt_toolkit.styles import merge_styles
 from pygments.styles import get_style_by_name
 from prompt_toolkit.styles.pygments import style_from_pygments_cls
 from prompt_toolkit.shortcuts import set_title, clear_title
+from prompt_toolkit import HTML
+from prompt_toolkit.validation import Validator, ValidationError
 from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.completion import PathCompleter
@@ -86,6 +88,9 @@ def get_statusbar_right_text():
         text_field.document.cursor_position_col + 1,
     )
 
+def formatDialogTitle(title):
+    return HTML(f"<ansimagenta>{title}</ansimagenta>")
+
 search_toolbar = SearchToolbar(ignore_case=True)
 text_field = TextArea(
     style="class:textarea",
@@ -100,8 +105,40 @@ text_field = TextArea(
     focus_on_click=True,
 )
 
+def getStringWidth(text): 
+        width = 0 
+        for character in text: 
+            width += wcwidth.wcwidth(character) 
+        return width
+
+def getTextFieldWidth(buffer):
+    line_count = buffer.document.line_count
+    if line_count >= 100000:
+        number_column_width = 8
+    elif line_count >= 10000:
+        number_column_width = 7
+    elif line_count >= 1000:
+        number_column_width = 6
+    elif line_count >= 100:
+        number_column_width = 5
+    else:
+        number_column_width = 4
+    return shutil.get_terminal_size().columns - number_column_width
+
+class NumberValidator(Validator):
+    def validate(self, document):
+        text = document.text
+        if text and not text.isdigit():
+            i = 0
+            # Get index of first non numeric character.
+            # We want to move the cursor here.
+            for i, c in enumerate(text):
+                if not c.isdigit():
+                    break
+            raise ValidationError(message='Integer ONLY!', cursor_position=i)
+
 class TextInputDialog:
-    def __init__(self, title="", label_text="", completer=None):
+    def __init__(self, title="", label_text="", completer=None, validator=None):
         self.future = Future()
 
         def accept_text(buf):
@@ -116,6 +153,7 @@ class TextInputDialog:
             self.future.set_result(None)
 
         self.text_area = TextArea(
+            validator=validator,
             completer=completer,
             multiline=False,
             width=D(preferred=40),
@@ -127,7 +165,7 @@ class TextInputDialog:
         cancel_button = Button(text="Cancel", handler=cancel)
 
         self.dialog = Dialog(
-            title=title,
+            title=formatDialogTitle(title),
             body=HSplit([Label(text=label_text), self.text_area]),
             buttons=[ok_button, cancel_button],
             width=D(preferred=80),
@@ -189,7 +227,7 @@ class SearchReplaceDialog:
         cancel_button = Button(text="Cancel", handler=cancel)
 
         self.dialog = Dialog(
-            title=title,
+            title=formatDialogTitle(title),
             body=HSplit([Label(text=label_find), self.search_area, Label(text=label_replace), self.replace_area, VSplit([self.case_sensitivity, self.regex_search])]),
             buttons=[replace_all_button, selection_only_button, cancel_button],
             width=D(preferred=80),
@@ -209,7 +247,7 @@ class MessageDialog:
         ok_button = Button(text="OK", handler=(lambda: set_done()))
 
         self.dialog = Dialog(
-            title=title,
+            title=formatDialogTitle(title),
             body=HSplit([Label(text=text)]),
             buttons=[ok_button],
             width=D(preferred=80),
@@ -233,7 +271,7 @@ class ConfirmDialog:
         no_button = Button(text="NO", handler=no)
 
         self.dialog = Dialog(
-            title=title,
+            title=formatDialogTitle(title),
             body=HSplit([Label(text=text)]),
             buttons=[ok_button, no_button],
             width=D(preferred=80),
@@ -280,74 +318,163 @@ def _(event):
         # Focus menu
         event.app.layout.focus(root_container.window)
         ApplicationState.focus_menu = True
-    
+
+# Basic
+# help
 @bindings.add("c-k")
 def _(_):
     do_help()
-
+# quit
 @bindings.add("c-q")
 def _(_):
     do_exit()
 
+
+# Navigation
+# left arrow; necessary for moving between lines
+@bindings.add("left")
+def _(_):
+    buffer = text_field.buffer
+    if buffer.cursor_position > 0:
+        buffer.cursor_position = buffer.cursor_position - 1
+# right arrow; necessary for moving between lines
+@bindings.add("right")
+def _(_):
+    buffer = text_field.buffer
+    if buffer.cursor_position < len(buffer.text):
+        buffer.cursor_position = buffer.cursor_position + 1
+# up arrow; necessary for moving between characters of the same line
+@bindings.add("up")
+def _(_):
+    buffer = text_field.buffer
+    text_field_width = getTextFieldWidth(buffer)
+    if buffer.document.cursor_position_col >= text_field_width:
+        buffer.cursor_position = buffer.cursor_position - text_field_width
+    elif buffer.document.on_first_line:
+        buffer.cursor_position = 0
+    else:
+        previous_line = buffer.document.lines[buffer.document.cursor_position_row - 1]
+        previous_line_width = getStringWidth(previous_line)
+        previous_line_last_chunk_width = previous_line_width%text_field_width
+        current_ursor_position_col = buffer.document.cursor_position_col
+        if previous_line_last_chunk_width > current_ursor_position_col:
+            buffer.cursor_position = buffer.cursor_position - previous_line_last_chunk_width - 1
+        else:
+            buffer.cursor_position = buffer.cursor_position - current_ursor_position_col - 1
+# down arrow; necessary for moving between characters of the same line
+@bindings.add("down")
+def _(_):
+    buffer = text_field.buffer
+    text_field_width = getTextFieldWidth(buffer)
+    cursor_position_col = buffer.document.cursor_position_col
+    current_chunk_cursor_position_col = cursor_position_col%text_field_width
+    end_of_line_position = buffer.document.get_end_of_line_position()
+    remaining_width_available = text_field_width - current_chunk_cursor_position_col
+    if end_of_line_position > remaining_width_available:
+        if end_of_line_position > text_field_width:
+            buffer.cursor_position = buffer.cursor_position + text_field_width
+        else:
+            buffer.cursor_position = buffer.cursor_position + end_of_line_position
+    elif buffer.document.on_last_line:
+        buffer.cursor_position = len(buffer.text)
+    else:
+        next_line = buffer.document.lines[buffer.document.cursor_position_row + 1]
+        next_line_width = getStringWidth(next_line)
+        if next_line_width >= current_chunk_cursor_position_col:
+            buffer.cursor_position = buffer.cursor_position + end_of_line_position + current_chunk_cursor_position_col + 1
+        else:
+            buffer.cursor_position = buffer.cursor_position + end_of_line_position + next_line_width + 1
+
+
+# go to the beginning of the current line
+@bindings.add("escape", "b")
+def _(_):
+    buffer = text_field.buffer
+    buffer.cursor_position = buffer.cursor_position - buffer.document.cursor_position_col
+# go to the end of the current line
+@bindings.add("escape", "e")
+def _(_):
+    buffer = text_field.buffer
+    buffer.cursor_position = buffer.cursor_position + buffer.document.get_end_of_line_position()
+# go to the beginning of the whole text
 @bindings.add("escape", "a")
 def _(_):
-    do_deselect_all()
-
-@bindings.add("c-a")
+    buffer = text_field.buffer
+    buffer.cursor_position = 0
+# go to the end of the whole text
+@bindings.add("escape", "z")
 def _(_):
-    do_select_all()
-
-@bindings.add("c-c")
-def _(_):
-    do_copy()
-
-@bindings.add("c-v")
-def _(_):
-    do_paste()
-
-@bindings.add("c-x")
-def _(_):
-    do_cut()
-
-@bindings.add("c-z")
-def _(_):
-    do_undo()
-
-@bindings.add("c-i")
-def _(_):
-    do_add_spaces()
-
-@bindings.add("c-f")
-def _(_):
-    do_find()
-
-@bindings.add("c-r")
-def _(_):
-    do_find_replace()
-
+    buffer = text_field.buffer
+    buffer.cursor_position = len(buffer.text)
+# go to line
 @bindings.add("c-l")
 def _(_):
     do_go_to()
 
+# Delete
+# backspace
+@bindings.add("c-h")
+def _(_):
+    do_backspace()
+# forward delete
 @bindings.add("c-d")
 def _(_):
     do_delete()
 
+# selection
+@bindings.add("c-a")
+def _(_):
+    do_select_all()
+@bindings.add("escape", "d")
+def _(_):
+    do_deselect_all()
+
+# clipboard
+@bindings.add("c-c")
+def _(_):
+    do_copy()
+@bindings.add("c-v")
+def _(_):
+    do_paste()
+@bindings.add("c-x")
+def _(_):
+    do_cut()
+
+# search
+@bindings.add("c-f")
+def _(_):
+    do_find()
+@bindings.add("c-r")
+def _(_):
+    do_find_replace()
+
+# file operations
 @bindings.add("c-n")
 def _(_):
     do_new_file()
-
-@bindings.add("c-s")
-def _(_):
-    do_save_file()
-
 @bindings.add("c-o")
 def _(_):
     do_open_file()
-
+@bindings.add("c-s")
+def _(_):
+    do_save_file()
 @bindings.add("c-w")
 def _(_):
     do_save_as_file()
+
+# edit
+@bindings.add("c-i")
+def _(_):
+    do_add_spaces()
+@bindings.add("c-z")
+def _(_):
+    do_undo()
+@bindings.add("<any>")
+def _(event):
+    buffer = text_field.buffer
+    buffer.cut_selection().text
+    # a key sequence looks like [KeyPress(key='a', data='a')]
+    buffer.insert_text(event.key_sequence[0].data)
 
 #
 # Handlers for menu items.
@@ -514,7 +641,7 @@ def do_add_spaces():
 
 def do_go_to():
     async def coroutine():
-        dialog = TextInputDialog(title="Go to line", label_text="Line number:")
+        dialog = TextInputDialog(title="Go to line", label_text="Line number:", validator=NumberValidator())
 
         line_number = await show_dialog_as_float(dialog)
         if line_number is not None:
@@ -545,8 +672,19 @@ def do_copy():
     data = text_field.buffer.copy_selection()
     get_app().clipboard.set_data(data)
 
+def do_backspace():
+    buffer = text_field.buffer
+    data = buffer.cut_selection()
+    # delete one char before cursor [backspace] if there is no text selection
+    if not data.text and buffer.cursor_position >= 1:
+        buffer.delete_before_cursor(1)
+
 def do_delete():
-    text_field.buffer.cut_selection()
+    buffer = text_field.buffer
+    data = buffer.cut_selection()
+    # forward delete one character if there is no selection
+    if not data.text and buffer.cursor_position < len(buffer.text):
+        buffer.delete(1)
 
 def do_find():
     start_search(text_field.control)
@@ -615,9 +753,9 @@ root_container = MenuContainer(
                 MenuItem("[Z] Undo", handler=do_undo),
                 #MenuItem("[Y] Redo", handler=do_redo),
                 MenuItem("-", disabled=True),
-                MenuItem("[X] Cut", handler=do_cut),
                 MenuItem("[C] Copy", handler=do_copy),
                 MenuItem("[V] Paste", handler=do_paste),
+                MenuItem("[X] Cut", handler=do_cut),
                 MenuItem("[D] Delete", handler=do_delete),
                 MenuItem("-", disabled=True),
                 MenuItem("[F] Find", handler=do_find),
@@ -658,6 +796,8 @@ custom_style = Style.from_dict(
         "status": "reverse",
         "shadow": "bg:#440044",
         "textarea": "bg:#1E1E1E",
+        "search-toolbar": "bg:#1E1E1E",
+        "button.focused": "bg:#F9AAF8 fg:#000000"
     }
 )
 #https://github.com/prompt-toolkit/python-prompt-toolkit/issues/765#issuecomment-434465617

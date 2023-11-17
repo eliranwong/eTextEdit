@@ -65,6 +65,8 @@ control + i: insert spaces
 
 control + f: find
 
+escape + f: clear i-search highlights
+
 control + r: find & replace
 
 control + l: go to line

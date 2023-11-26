@@ -1,0 +1,4 @@
+datetime
+prompt_toolkit
+pygments
+pyperclip

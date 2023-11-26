@@ -19,7 +19,7 @@ https://github.com/eliranwong/eTextEdit
 
 # Screenshots
 
-<img src="github.com/eliranwong/eTextEdit/assets/25262722/c7a564ce-2e3c-4913-8210-52e259545044">
+<img src="https://github.com/eliranwong/eTextEdit/assets/25262722/c7a564ce-2e3c-4913-8210-52e259545044">
 
 <img src="https://github.com/eliranwong/eTextEdit/assets/25262722/7703f138-e56e-4c6f-84fc-4abe768f161a">
 

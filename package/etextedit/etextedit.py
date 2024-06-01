@@ -13,8 +13,8 @@ Modified and Enhanced by Eliran Wong:
 * added key bindings
 * added handling of unasaved changes
 * added dark theme and lexer style
-* support stdin, e.g. echo "Hello world!" | python3 eTextEdit.py
-* support file argument, e.g. python3 eTextEdit.py <filename>
+* support stdin, e.g. echo "Hello world!" | etextedit
+* support file argument, e.g. etextedit <filename>
 * support plugins (forthcoming)
 
 eTextEdit repository:
@@ -459,6 +459,9 @@ def _(event):
         search_toolbar.search_buffer.text = previous_search_text
         search_toolbar.search_buffer.cursor_position = len(previous_search_text)
     do_find()
+@bindings.add("c-b")
+def _(_):
+    do_find_reverse()
 @bindings.add("c-r")
 def _(_):
     do_find_replace()
@@ -780,7 +783,8 @@ root_container = MenuContainer(
                 MenuItem("[D] Delete", handler=do_delete),
                 MenuItem("-", disabled=True),
                 MenuItem("[F] Find", handler=do_find),
-                MenuItem("[R] Find & Replace", handler=do_find_reverse),
+                MenuItem("[B] Find Backward", handler=do_find_reverse),
+                MenuItem("[R] Find & Replace", handler=do_find_replace),
                 #MenuItem("Find next", handler=do_find_next),
                 #MenuItem("Replace"),
                 MenuItem("[L] Go To Line", handler=do_go_to),
@@ -903,3 +907,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    clear_title()
